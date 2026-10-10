@@ -1,2 +1,22 @@
+/vendor
+/node_modules
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
 .env
-vendor/
+.env.backup
+.env.production
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+auth.json
+npm-debug.log
+yarn-error.log
+/.idea
+/.vscode
+/.fleet
+/.nova
+/.zed
+
+# OJO: public/build NO se ignora a proposito: contiene el CSS/JS compilado que usa Render

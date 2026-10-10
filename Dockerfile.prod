@@ -1,0 +1,35 @@
+# Dockerfile de PRODUCCION para Render (el "Dockerfile" original es solo para desarrollo)
+FROM php:8.4-apache
+
+# Solo hace falta pdo_mysql: el resto de extensiones que pide Laravel ya vienen en la imagen
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git unzip \
+ && docker-php-ext-install pdo_mysql \
+ && a2enmod rewrite headers \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Apache: escucha en el puerto que indique Render ($PORT) y sirve /public
+ENV PORT=10000
+RUN printf 'Listen ${PORT}\n' > /etc/apache2/ports.conf \
+ && printf '<VirtualHost *:${PORT}>\n  ServerName localhost\n  DocumentRoot /var/www/html/public\n  <Directory /var/www/html/public>\n    AllowOverride All\n    Require all granted\n  </Directory>\n</VirtualHost>\n' > /etc/apache2/sites-available/000-default.conf
+
+WORKDIR /var/www/html
+
+# Dependencias PHP (capa cacheable)
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
+
+# Codigo de la app (public/build con CSS/JS ya compilados va incluido)
+COPY . .
+RUN composer dump-autoload --optimize --no-dev --no-scripts \
+ && mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+ && chown -R www-data:www-data storage bootstrap/cache
+
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh \
+ && chmod +x /usr/local/bin/docker-entrypoint.sh
+
+EXPOSE 10000
+CMD ["docker-entrypoint.sh"]
